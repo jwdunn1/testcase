@@ -1,9 +1,9 @@
-## FCND - Controls Project
+# FCND - Controls Project
 
 ![C++ trajectory](images/cover.png?raw=true)
 
 
-### Overview
+## Overview
 
 The goal of the project is to first implement a prototype controller in Python and then translate that code into C++ with some modifications that will improve its robustness and performance. 
 
