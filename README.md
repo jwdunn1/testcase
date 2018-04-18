@@ -101,6 +101,7 @@ C++: [see lines 263-274 in `QuadController.cpp`]
 The thrust and moments are converted to the appropriate four different desired thrust commands for the motors. The dimensions of the drone arm length (`L`) and motor torque coefficient (`kappa`) are accounted for when calculating thrust from desired rotation moments. See also the thrust computation in the appendix below.
 
 C++: [see lines 77-86 in `QuadController.cpp`]
+<br><br><br>
 
 
 ## 02 Flight evaluation
@@ -169,6 +170,7 @@ Figure 10: Scenario 4 - nonidealities and robustness (red: overweight, orange: i
 Figure 11: Scenario 5 - trajectory following (red: no feed-forward, orange: with feed-forward)
 
 An additional scenario tests hover stability. In this case, position following error is less than 1.2 millimeters for at least 3.33 seconds.
+<br><br><br>
 
 ## 03 References
 
@@ -218,6 +220,7 @@ http://flyingmachinearena.org/wp-content/publications/2014/lupashin2014platform.
 
 [12] ***Matrix Equations Solver***<br>
 https://www.symbolab.com/solver/matrix-equations-calculator
+<br><br><br>
 
 ## 04 Appendix
 
@@ -237,3 +240,6 @@ https://www.symbolab.com/solver/matrix-equations-calculator
 
 ![C++ trajectory](images/Figure12.png?raw=true)<br>
 Figure 12: Body coordinates and forces
+<br><br><br>
+
+    End of report
