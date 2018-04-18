@@ -155,7 +155,7 @@ https://www.springer.com/us/book/9781447143987
 Michael, Mellinger, Lindsey, and Kumar<br>
 https://pdfs.semanticscholar.org/20b0/f0268bc11c55389816223d712d85203e2936.pdf
 
-[3] ***Feedback Systems, 2nd Ed. ***<br>
+[3] ***Feedback Systems, 2nd Ed***<br>
 Karl J. Åström and Richard M. Murray<br>
 http://www.cds.caltech.edu/~murray/amwiki/index.php
 
