@@ -5,7 +5,22 @@
 
 ### Overview
 
-The goal of the project is to first implement a prototype controller in Python and then translate that code into C++ with some modifications that will improve its robustness and performance. The following report consists of 4 sections:
+The goal of the project is to first implement a prototype controller in Python and then translate that code into C++ with some modifications that will improve its robustness and performance. 
+
+## 
+#### Associated files
+
+Associated program, configuration, and log files:<br>
+**Python script:** `controller.py`<br>
+**Log file:** `Logs/TLog.txt`<br><br>
+Located in: https://github.com/jwdunn1/FCND-Controls-CPP:<br>
+**C++ program:** `QuadController.cpp`<br>
+**Configuration:** `QuadControlParams.txt`<br>
+
+## 
+## Contents
+
+The following report consists of 4 sections:
 
 **01 Implementation**<br>
     01.1 Body rate control<br>
@@ -27,14 +42,17 @@ The goal of the project is to first implement a prototype controller in Python a
     04.2 Angular velocity<br>
     04.3 Thrust computation
 
-See also the `controller.py` script, the log file `Logs/TLog.txt`, and the associated repository files `QuadController.cpp` and `QuadControlParams.txt` at: https://github.com/jwdunn1/FCND-Controls-CPP.
+
+## 01 Implementation
 
 Each of the implemented methods of the architecture fit together as illustrated in Figure 1. Beginning with the code from the `Full 3D Control` exercise presented in class, the methods were refactored several times to gain a full understanding of the mathematics, physics, and data flow.
 
 ![Architecture](images/Figure1.png?raw=true)<br>
 Figure 1: Control structure
 
-## 01 Implementation
+## 
+
+
 
 ### 01.1 Body rate control
 
