@@ -2,12 +2,10 @@
 
 ![C++ trajectory](images/cover.png?raw=true)
 
-
 ## Overview
 
 The goal of the project is to first implement a prototype controller in Python and then translate that code into C++ with some modifications that will improve its robustness and performance. 
 
-<br>
 ## Associated files
 
 Program, script, configuration, and log:<br>
@@ -17,7 +15,6 @@ Located in: https://github.com/jwdunn1/FCND-Controls-CPP:<br>
 **C++ program:** `QuadController.cpp`<br>
 **Configuration:** `QuadControlParams.txt`
 
-<br>
 ## Contents
 
 The following report consists of 4 sections:
