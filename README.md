@@ -38,7 +38,7 @@ The following report consists of 4 sections:
     04.1 Rotation matrix<br>
     04.2 Angular velocity<br>
     04.3 Thrust computation
-
+<br><br><br>
 
 ## 01 Implementation
 
