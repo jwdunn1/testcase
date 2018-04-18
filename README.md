@@ -17,9 +17,9 @@ The goal of the project is to first implement a prototype controller in Python a
   08 C++ controller flight performance
   09 References
 </pre>
-See also the `controller.py` script, the log file `Logs/TLog.txt`, the associated repository files `QuadController.cpp` and `QuadControlParams.txt` at: https://github.com/jwdunn1/FCND-Controls-CPP.
+See also the `controller.py` script, the log file `Logs/TLog.txt`, and the associated repository files `QuadController.cpp` and `QuadControlParams.txt` at: https://github.com/jwdunn1/FCND-Controls-CPP.
 
-Each of the implemented methods of the architecture fit together as illustrated in Figure 1. Beginning with the code from the `Full 3D Control` exercise presented in class, the methods were refactored several times to gain a full understanding of the mathematics and data flow.
+Each of the implemented methods of the architecture fit together as illustrated in Figure 1. Beginning with the code from the `Full 3D Control` exercise presented in class, the methods were refactored several times to gain a full understanding of the mathematics, physics, and data flow.
 
 ![Architecture](images/Figure1.png?raw=true)<br>
 Figure 1: Control structure
@@ -27,7 +27,7 @@ Figure 1: Control structure
 ## 
 ### 01 Body rate control
 
-The controller is a proportional controller on body rates to commanded moments. The controller takes into account the moments of inertia of the drone when calculating the commanded moments. For the Python version, this controller operates at a frequency of 40 Herz through the gyro callback. (The C++ version operates all controllers synchronously at 500 Hz.)
+The controller is a proportional controller on body rates to commanded moments. The controller takes into account the moments of inertia of the drone when calculating the commanded moments. For the Python version, this controller operates at a frequency of 40 hertz through the gyro callback. (The C++ version operates all controllers synchronously at 500 Hz.)
 
 Python: [see lines 105-112 in `controller.py`]<br>
 C++: [see lines 111-117 in `QuadController.cpp`]
@@ -35,7 +35,7 @@ C++: [see lines 111-117 in `QuadController.cpp`]
 ## 
 ### 02 Altitude control
 
-Part one of attitude control, the altitude controller uses both the down position and the down velocity to command thrust. The drone's mass is accounted for to ensure that the output value is a thrust value in Newtons. The thrust includes the non-linear effects from non-zero roll/pitch angles.
+Part one of attitude control, the altitude controller uses both the down position and the down velocity to command thrust. The drone's mass is accounted for to ensure that the output value is a thrust value in newtons. The thrust includes the non-linear effects from non-zero roll/pitch angles.
 
 Note: The Python version of the attitude controller (which includes altitude, roll-pitch, and yaw controllers) operates at 40 Hz through the attitude callback.
 
@@ -93,37 +93,51 @@ Figures 2-4 below are graphic results from a successful flight.
 ![Test results](images/Figure2.png?raw=true)<br>
 Figure 2: Example results from the test script.
 
+## 
+
 ![Test trajectory](images/Figure3.png?raw=true)<br>
 Figure 3: Overhead view of test trajectory (gray line), flight path (dashed blue), start (green), goal (red). The light gray area is a 2-meter lateral tolerance.
+
+## 
 
 ![Test trajectory](images/Figure4.png?raw=true)<br>
 Figure 4: Horizontal and vertical error metrics from a successful flight
 
-The NonlinearController class can operate with the default controls_flyer.py script, or with the controls_flyer-TEST.py script. The test version improves performance by slowing the attitude and position controllers to 20 Hz. A comparison sequence of 20 successful runs of each script is plotted in Figure 5 and demonstrates vertical error reduction by 31.5% (blue) and horizontal error reduction by 2.3% (red). The test version also includes alternative trajectories useful for tuning the control gains. A hover stability test indicates the Unity simulator contains a GPS noise radius less than 0.25 meter.
+The NonlinearController class can operate with the default controls_flyer.py script, or with the controls_flyer-TEST.py script. The `TEST` version improves performance by slowing the attitude and position controllers to 20 Hz. A comparison sequence of 20 successful runs of each script is plotted in Figure 5 and demonstrates vertical error reduction by 31.5% (blue) and horizontal error reduction by 2.3% (red). The `TEST` version also includes alternative trajectories useful for tuning the control gains. A hover stability test indicates the Unity simulator contains a GPS noise radius less than 0.25 meter.
 
 ![Python test runs](images/Figure5.png?raw=true)<br>
 Figure 5: Error metrics from 40 successful flights, comparing the default script (dashed) with reduced rate script (solid). Lower values are better.
 
 ## 
 ### 08 C++ controller flight performance
-The C++ controller successfully follows the provided test trajectory and passes (numerically and visually) all scenarios.
+The C++ controller successfully follows the provided test trajectory and passes (numerically and visually) all scenarios. See Figures 6-11 below.
 
 In each scenario, the drone looks stable and performs the required task. The controller is able to handle the non-linearities of scenario 4 (all three drones in the scenario perform their required tasks with the same control gains). The control gains were discovered manually through trial and error, finding workable ranges and setting to mid-points, except yaw gain which is intentionally set to a lower value for higher stability.
 
 ![Passing all scenarios](images/Figure6.png?raw=true)<br>
 Figure 6: Metrics from successful scenarios (note all are `PASS`)
 
+## 
+
 ![Scenario 1](images/Figure7.png?raw=true)<br>
 Figure 7: Scenario 1 - tuning mass to hover for at least 0.8 seconds
+
+## 
 
 ![Scenario 2](images/Figure8.png?raw=true)<br>
 Figure 8: Scenario 2 - stabilize the rotational motion and bring the vehicle back to level attitude
 
+## 
+
 ![Scenario 3](images/Figure9.png?raw=true)<br>
 Figure 9: Scenario 3 - move to a destination (yellow yaws in flight)
 
+## 
+
 ![Scenario 4](images/Figure10.png?raw=true)<br>
 Figure 10: Scenario 4 - nonidealities and robustness (red: overweight, orange: ideal, green: shifted mass)
+
+## 
 
 ![Scenario 5](images/Figure11.png?raw=true)<br>
 Figure 11: Scenario 5 - trajectory following (red: no feed-forward, orange: with feed-forward)
