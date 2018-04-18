@@ -7,25 +7,25 @@
 
 The goal of the project is to first implement a prototype controller in Python and then translate that code into C++ with some modifications that will improve its robustness and performance. The following report consists of 4 sections:
 
-**01 Implementation**
-01.1 Body rate control
-01.2 Altitude control
-01.3 Roll-pitch control
-01.4 Yaw control
-01.5 Lateral position control
-01.6 Motor commands in C++
+**01 Implementation**<br>
+    01.1 Body rate control<br>
+    01.2 Altitude control<br>
+    01.3 Roll-pitch control<br>
+    01.4 Yaw control<br>
+    01.5 Lateral position control<br>
+    01.6 Motor commands in C++
 
-**02 Flight evaluation**
-02.1 Python controller performance
-02.2 C++ controller performance
+**02 Flight evaluation**<br>
+    02.1 Python controller performance<br>
+    02.2 C++ controller performance
 
-**03 References**
-Books, research papers, and tools
+**03 References**<br>
+    Books, research papers, and tools
 
-**04 Appendix**
-04.1 Rotation matrix
-04.2 Angular velocity
-04.3 Thrust computation
+**04 Appendix**<br>
+    04.1 Rotation matrix<br>
+    04.2 Angular velocity<br>
+    04.3 Thrust computation
 
 See also the `controller.py` script, the log file `Logs/TLog.txt`, and the associated repository files `QuadController.cpp` and `QuadControlParams.txt` at: https://github.com/jwdunn1/FCND-Controls-CPP.
 
