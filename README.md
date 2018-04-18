@@ -5,17 +5,24 @@
 
 ### Overview
 
-The goal of the project is to first implement a prototype controller in Python and then translate that code into C++ with some modifications that will improve its robustness and performance. The following report consists of 9 sections:
+The goal of the project is to first implement a prototype controller in Python and then translate that code into C++ with some modifications that will improve its robustness and performance. The following report consists of 8 sections:
 <pre>
-  01 Body rate control
-  02 Roll-pitch control
-  03 Altitude control
-  04 Lateral position control
-  05 Yaw control
-  06 Calculating the motor commands in C++
-  07 Python controller flight performance
-  08 C++ controller flight performance
-  09 References
+**01 Implementation**
+01.1 Body rate control
+01.2 Altitude control
+01.3 Roll-pitch control
+01.4 Yaw control
+01.5 Lateral position control
+01.6 Motor commands in C++
+**02 Flight evaluation**
+02.1 Python controller performance
+02.2 C++ controller performance
+**03 References**
+Books, research papers, and tools
+**04 Appendix**
+04.1 Rotation matrix
+04.2 Angular velocity
+04.3 Thrust computation
 </pre>
 See also the `controller.py` script, the log file `Logs/TLog.txt`, and the associated repository files `QuadController.cpp` and `QuadControlParams.txt` at: https://github.com/jwdunn1/FCND-Controls-CPP.
 
@@ -24,8 +31,9 @@ Each of the implemented methods of the architecture fit together as illustrated 
 ![Architecture](images/Figure1.png?raw=true)<br>
 Figure 1: Control structure
 
-## 
-### 01 Body rate control
+## 01 Implementation
+
+### 01.1 Body rate control
 
 The controller is a proportional controller on body rates to commanded moments. The controller takes into account the moments of inertia of the drone when calculating the commanded moments. For the Python version, this controller operates at a frequency of 40 hertz through the gyro callback. (The C++ version operates all controllers synchronously at 500 Hz.)
 
@@ -33,7 +41,7 @@ Python: [see lines 105-112 in `controller.py`]<br>
 C++: [see lines 111-117 in `QuadController.cpp`]
 
 ## 
-### 02 Altitude control
+### 01.2 Altitude control
 
 Part one of attitude control, the altitude controller uses both the down position and the down velocity to command thrust. The drone's mass is accounted for to ensure that the output value is a thrust value in newtons. The thrust includes the non-linear effects from non-zero roll/pitch angles.
 
@@ -46,7 +54,7 @@ Additionally, the C++ altitude controller contains an integrator to handle the w
 C++: [see lines 149-159 in `QuadController.cpp`]
 
 ## 
-### 03 Roll pitch control
+### 01.3 Roll pitch control
 
 Part two of attitude control, the roll-pitch controller uses the acceleration and thrust commands, in addition to the vehicle attitude to output a body rate command. The controller accounts for the non-linear transformation from local accelerations to body rates. The drone's mass is accounted for when calculating the target angles. See also the rotation matrix and angular velocity in the appendix below. Lateral acceleration is limited by a maximum tilt angle.
 
@@ -54,7 +62,7 @@ Python: [see lines 158-170 in `controller.py`]<br>
 C++: [see lines 190-199 in `QuadController.cpp`]
 
 ## 
-### 04 Yaw control
+### 01.4 Yaw control
 
 Part three of attitude control, the yaw controller is a linear/proportional heading mechanism which outputs yaw rate commands. Further, the yaw error is checked for a valid range between -π and π.
 
@@ -62,7 +70,7 @@ Python: [see lines 179-185 in `controller.py`]<br>
 C++: [see lines 222-228 in `QuadController.cpp`]
 
 ## 
-### 05 Lateral position control
+### 01.5 Lateral position control
 
 Finally, the lateral position controller uses the local NE position and velocity to generate a commanded local acceleration. The Python version operates at 80 Hz through the velocity callback. The trajectory_control  routine optionally returns an acceleration feed-forward value to pass along to the lateral position controller (a testing script mentioned in section 07 below makes use of this feed forward value). Additionally, to smooth the sharp corners of the test trajectory and improve computation of the commanded acceleration, an integrator uses the time duration since the last call.
 
@@ -70,16 +78,16 @@ Python: [see lines 208-219 in `controller.py`]<br>
 C++: [see lines 263-274 in `QuadController.cpp`]
 
 ## 
-### 06 Calculating the motor commands in C++.
+### 01.6 Motor commands in C++.
 
 The thrust and moments are converted to the appropriate four different desired thrust commands for the motors. The dimensions of the drone arm length (`L`) and motor torque coefficient (`kappa`) are accounted for when calculating thrust from desired rotation moments. See also the thrust computation in the appendix below.
 
 C++: [see lines 77-86 in `QuadController.cpp`]
 
 
-## Flight Evaluation
+## 02 Flight evaluation
 
-### 07 Python controller flight performance
+### 02.1 Python controller performance
 The Python controller successfully follows the provided test trajectory, meeting the minimum flight performance metrics. See the log file (`TLog.txt`) in the `Logs` folder. The control gains were discovered manually through trial and error.
 
 For this, the drone passes the provided evaluation script with the default parameters. These metrics being: 
@@ -109,7 +117,7 @@ The NonlinearController class can operate with the default controls_flyer.py scr
 Figure 5: Error metrics from 40 successful flights, comparing the default script (dashed) with reduced rate script (solid). Vertical error is blue and horizontal error is red. Lower values are better.
 
 ## 
-### 08 C++ controller flight performance
+### 02.2 C++ controller performance
 The C++ controller successfully follows the provided test trajectory and passes (numerically and visually) all scenarios. See Figures 6-11 below.
 
 In each scenario, the drone looks stable and performs the required task. The controller is able to handle the non-linearities of scenario 4 (all three drones in the scenario perform their required tasks with the same control gains). The control gains were discovered manually through trial and error, finding workable ranges and setting to mid-points, except yaw gain which is intentionally set to a lower value for higher stability.
@@ -144,8 +152,7 @@ Figure 11: Scenario 5 - trajectory following (red: no feed-forward, orange: with
 
 An additional scenario tests hover stability. In this case, position following error is less than 1.2 millimeters for at least 3.33 seconds.
 
-## 
-### 09 References
+## 03 References
 
 [1] ***Quad Rotorcraft Control***<br>
 Carrillo, Lopez, Lozano, and Pegard<br>
@@ -194,19 +201,19 @@ http://flyingmachinearena.org/wp-content/publications/2014/lupashin2014platform.
 [12] ***Matrix Equations Solver***<br>
 https://www.symbolab.com/solver/matrix-equations-calculator
 
-## Appendix
+## 04 Appendix
 
-### Rotation matrix
+### 04.1 Rotation matrix
 
 ![Rotation matrix](images/rotMatrix.png?raw=true)<br><br>
 
 ## 
-### Angular velocity
+### 04.2 Angular velocity
 
 ![Angular velocity](images/angularVelocity.png?raw=true)
 
 ## 
-### Thrust computation
+### 04.3 Thrust computation
 
 ![Thrust compute](images/thrusts.png?raw=true)
 
