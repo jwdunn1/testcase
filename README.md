@@ -106,7 +106,7 @@ Figure 4: Horizontal and vertical error metrics from a successful flight
 The NonlinearController class can operate with the default controls_flyer.py script, or with the controls_flyer-TEST.py script. The `TEST` version improves performance by slowing the attitude and position controllers to 20 Hz. A comparison sequence of 20 successful runs of each script is plotted in Figure 5 and demonstrates vertical error reduction by 31.5% (blue) and horizontal error reduction by 2.3% (red). The `TEST` version also includes alternative trajectories useful for tuning the control gains. A hover stability test indicates the Unity simulator contains a GPS noise radius less than 0.25 meter.
 
 ![Python test runs](images/Figure5.png?raw=true)<br>
-Figure 5: Error metrics from 40 successful flights, comparing the default script (dashed) with reduced rate script (solid). Lower values are better.
+Figure 5: Error metrics from 40 successful flights, comparing the default script (dashed) with reduced rate script (solid). Vertical error is blue and horizontal error is red. Lower values are better.
 
 ## 
 ### 08 C++ controller flight performance
@@ -155,7 +155,7 @@ https://www.springer.com/us/book/9781447143987
 Michael, Mellinger, Lindsey, and Kumar<br>
 https://pdfs.semanticscholar.org/20b0/f0268bc11c55389816223d712d85203e2936.pdf
 
-[3] ***Feedback Systems, 2nd Ed.***<br>
+[3] ***Feedback Systems, 2nd Ed. ***<br>
 Karl J. Åström and Richard M. Murray<br>
 http://www.cds.caltech.edu/~murray/amwiki/index.php
 
