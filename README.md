@@ -1,133 +1,200 @@
-## FCND - Motion Planning Project
+## FCND - Controls Project
 
-![A busy drone is a happy drone!](images/skycity.png?raw=true)
+![C++ trajectory](images/cover.png?raw=true)
+
 
 ### Overview
 
-The goal of the project is to plan a path through an urban environment. The report following consists of 6 sections: starter code, initial implementation, executing test flights, additional functionality, potential optimizations, and references. See also the `motion_planning.py` script for reference.
+The goal of the project is to first implement a prototype controller in Python and then translate that code into C++ with some modifications that will improve its robustness and performance. The following report consists of 9 sections:
+<pre>
+  01 Body rate control
+  02 Roll-pitch control
+  03 Altitude control
+  04 Lateral position control
+  05 Yaw control
+  06 Calculating the motor commands in C++
+  07 Python controller flight performance
+  08 C++ controller flight performance
+  09 References
+</pre>
+See also the `controller.py` script, the log file `Logs/TLog.txt`, the associated repository files `QuadController.cpp` and `QuadControlParams.txt` at: https://github.com/jwdunn1/FCND-Controls-CPP.
 
-### 01 Starter Code
+Each of the implemented methods of the architecture fit together as illustrated in Figure 1. Beginning with the code from the `Full 3D Control` exercise presented in class, the methods were refactored several times to gain a full understanding of the mathematics and data flow.
 
-The initial version of the `motion_planning.py` script is compared side-by-side with the `backyard_flyer_solution.py` script to briefly describe how each of the implemented modifications is functioning. See Figure 1 below.
-
-
-![Comparison](images/compare.png?raw=true)<br>
-Figure 1: Comparison of starter code to `backyard_flyer_solution.py`
-
-## 
-### 02 Initial Implementation of the Path Planning Algorithm
-
-**Set global home** by reading the first line of the csv file, extracting lat0 and lon0 as floating point values and using the `self.set_home_position()` method. [at line 396 in `motion_planning.py`]
-
-**Retrieve current position** in geodetic coordinates from `self._latitude`, `self._longitude` and `self._altitude` [at line 400 in `motion_planning.py`].
-
-**Set the start point** as current location [at line 239 in `motion_planning.py`]
-
-**Set the goal point** as any location on the grid [at 244 in `motion_planning.py` See also the options section starting at line 40]. 
-
-**Diagonal motions** added to A* [at line 103 in `planning_utils.py`]. Additional features discussed below.
-
-**Cull waypoints** from the grid paths using a 2D colinearity test [starting at line 244 in `planning_utils.py`]. Grid paths are pruned of excessive points by successively removing the middle point of three if they all fall on the same current line and share the same altitude. When a change in angle is detected, the middle point is retained. The variable `self.cull` enables pruning. (Graph paths are not pruned.) 
+![Architecture](images/Figure1.png?raw=true)<br>
+Figure 1: Control structure
 
 ## 
-### 03 Executing Test Flights
+### 01 Body rate control
 
-Set the `self.goal` variable to a geodetic coordinate within the city. [See the options section starting at line 40 in `motion_planning.py`]
+The controller is a proportional controller on body rates to commanded moments. The controller takes into account the moments of inertia of the drone when calculating the commanded moments. For the Python version, this controller operates at a frequency of 40 Herz through the gyro callback. (The C++ version operates all controllers synchronously at 500 Hz.)
 
-If the `self.goal` variable is set to `None`, then the program follows an itinerary of 222 coordinates listed in the file `itinerary.csv`. See Figure 2. The flying vehicle visits locations to "make deliveries and pickups". A further option (`self.randomize_itin`) allows for randomization of the itinerary. For test purposes, an option (`self.visit_first`) will ensure an initial visit to the specified index destination (even if randomization is in effect). Note: For itinerary travel, if `n` items are listed in the file, then `n` number of stops will be performed.
-
-![Safe landing pads](images/landings.png?raw=true)<br>
-Figure 2: The itinerary contains 222 stops within the city (indicated as red dots).
-
-**Collider issue:** From the rubric: "At the moment there is some mismatch between the colliders map and actual buildings in the scene." See Figure 3. If a random position is specified, the closest safe landing position is selected from the itinerary. This can be overridden (`self.snap`) at risk of unsafe landings (such as half-way onto a building roof or ledge).
-
-![collider misalignment](images/ColliderMisalignment.png?raw=true)<br>
-Figure 3: Misalignment of collider map (shown in yellow)
+Python: [see lines 105-112 in `controller.py`]<br>
+C++: [see lines 111-117 in `QuadController.cpp`]
 
 ## 
-### 04 Additional Functionality and Features
+### 02 Altitude control
 
-**Grid improvements**<br>
-Finding a pathway from some starting positions such as building courtyards proved to be challenging. Two code modifications overcome this: 1) the Grid class operates as a 2.5D model of the terrain, and 2) the A* algorithm accounts for altitude changes as an additional cost. Thus, buildings are considered as obstacles to go over or around, not dead ends. There are some building courtyards where the colliders are not aligned to the building properly, so a larger safety distance may be required for proper departure. However, an increase in safety distance may also complicate targeting of courtyards. A separate grid without safety distance is constructed to determine landing heights.
+Part one of attitude control, the altitude controller uses both the down position and the down velocity to command thrust. The drone's mass is accounted for to ensure that the output value is a thrust value in Newtons. The thrust includes the non-linear effects from non-zero roll/pitch angles.
 
-`CLIMB_COST` controls the cost of altitude changes. Presently set to a value of `100.0`, this is tuned to fly "around" buildings most of the time and to fly "over" only when necessary. A question remains: *What is the energy cost savings to fly around versus over?*
+Note: The Python version of the attitude controller (which includes altitude, roll-pitch, and yaw controllers) operates at 40 Hz through the attitude callback.
 
-Alternative heuristics functions are available for exploration: euclidean, manhattan, chebyshev, and octile. The octile function is tuned for a lower error estimation, however the Manhattan function is fast and sufficient.
+Python: [see lines 135-144 in `controller.py`]
 
-Deadband radius is set to 5 meters for smoother waypoint acquisition.
+Additionally, the C++ altitude controller contains an integrator to handle the weight non-idealities presented in scenario 4.
 
-Heading is calculated between waypoints as `atan2(dy,dx)` where `dy` is the difference in heading east and `dx` in heading north.
-
-When operating with the graph-mode disabled (discussed next) the modified grid A* creates interesting pathways through the city. If the target altitude is higher than the departing altitude, the algorithm will seek increasingly direct routes as it climbs intermediate waypoints along the path.
-
-**Graph overlay option**
-
-- sampled geodetic coordinates at each major road intersection (see Figure 4)
-- identified connecting bidirectional edges
-- created supporting scripts to determine closest access points to the graph
-- modified a copy of A* to operate with graph
-- created compound path maker (grid/graph/grid)
-- the `self.fly_low` variable enables an altitude drop (to a minimum of 11 meters) while flying along graph edges. If disabled, the vehicle will fly at the altitude of the last departure location.
-- if the start and goal location share the same nearest graph node, then a direct route is planned without the graph.
-- if the start and goal location are within a distance specified by `GRAPH_THRESHOLD`, then a direct route is planned without the graph. This distance is set at 222 meters (a little more than the diagonal distance of one city block).
-
-![graph](images/graph.png?raw=true)<br>
-Figure 4: Graph visualization using draw.io. Nodes (black) are major intersections. Edges (red) mostly align with roads.
-
-**Advantages of the graph**
-
-- less time searching the grid (e.g. a few hundred cycles vs hundreds of thousands)
-- higher performance
-- road corridors are open and wide (less course corrections)
-- avoids back alleys and congested building spaces
-- each node "services" an area of the city
-
-**Disadvantages of the graph**
-
-- sometimes the closest node found can cause overshoot backtracking
-- taller buildings cause some deeper search (but less than grid-only)
-- lower cost routes are possible at higher altitudes
-
-Converted obstacle grid into a class for re-usability. Also modified to store building height data rather than simple binary for a given altitude.
-
-Tested some of the more challenging building courtyards - entrapments - pinchpoint alley-ways where colliders resolution may indicate an embedded area. See Figure 5.<br>
-
-![testing](images/LocalCoordinates-Alt000.JPG?raw=true)<br>
-Figure 5: Collider visualization in Excel with local coordinates at ground level.
+C++: [see lines 149-159 in `QuadController.cpp`]
 
 ## 
-### 05 Potential optimizations
+### 03 Roll pitch control
 
-**Edge bisection:** If a target lies between two nodes, an edge which spans the nodes could be split dynamically.<br>
-**Acute angle edit:** If a path includes an angle less than 45 degrees, a shorter path may be computed to optimize.<br>
-**Edge cross-connection:** When operating at higher altitudes, line-of-sight paths can reduce cost. This could be implemented as a multi-dimensional graph, where shortest paths may be identified at higher altitudes.<br>
-**Plan memoization:** Save and reuse previous paths; void with new obstacles.
+Part two of attitude control, the roll-pitch controller uses the acceleration and thrust commands, in addition to the vehicle attitude to output a body rate command. The controller accounts for the non-linear transformation from local accelerations to body rates. The drone's mass is accounted for when calculating the target angles. See also the rotation matrix and angular velocity in the appendix below. Lateral acceleration is limited by a maximum tilt angle.
+
+Python: [see lines 158-170 in `controller.py`]<br>
+C++: [see lines 190-199 in `QuadController.cpp`]
 
 ## 
-### 06 References
+### 04 Yaw control
 
-***Thoughts on Pathfinding***<br>
-Amit Patel<br>
-http://theory.stanford.edu/~amitp/GameProgramming/Heuristics.html
+Part three of attitude control, the yaw controller is a linear/proportional heading mechanism which outputs yaw rate commands. Further, the yaw error is checked for a valid range between -π and π.
 
-***Interactive pathfinding visualization***<br>
-Xueqiao (Joe) Xu<br>
-https://qiao.github.io/PathFinding.js/visual/
+Python: [see lines 179-185 in `controller.py`]<br>
+C++: [see lines 222-228 in `QuadController.cpp`]
 
-***Graph Search Algorithms***<br>
-Steve Mussmann and Abi See<br>
-https://cs.stanford.edu/people/abisee/gs.pdf
+## 
+### 05 Lateral position control
 
-***Chebyshev distance***<br>
-https://en.wikipedia.org/wiki/Chebyshev_distance
+Finally, the lateral position controller uses the local NE position and velocity to generate a commanded local acceleration. The Python version operates at 80 Hz through the velocity callback. The trajectory_control  routine optionally returns an acceleration feed-forward value to pass along to the lateral position controller (a testing script mentioned in section 07 below makes use of this feed forward value). Additionally, to smooth the sharp corners of the test trajectory and improve computation of the commanded acceleration, an integrator uses the time duration since the last call.
 
-***Alpha max plus beta min algorithm***
-https://en.wikipedia.org/wiki/Alpha_max_plus_beta_min_algorithm
+Python: [see lines 208-219 in `controller.py`]<br>
+C++: [see lines 263-274 in `QuadController.cpp`]
 
-***Development of a Three Dimensional Path Planner for Aerial Robotic Workers***<br>
-Anastasios Zompas<br>
-http://essay.utwente.nl/71490/1/ZOMPAS_MA_EWI.pdf
+## 
+### 06 Calculating the motor commands in C++.
 
-***Downtown San Francisco map***<br>
-© 2018 HERE<br>
-https://wego.here.com/?map=37.79285,-122.39558,17,normal
+The thrust and moments are converted to the appropriate four different desired thrust commands for the motors. The dimensions of the drone arm length (`L`) and motor torque coefficient (`kappa`) are accounted for when calculating thrust from desired rotation moments. See also the thrust computation in the appendix below.
+
+C++: [see lines 77-86 in `QuadController.cpp`]
+
+
+## Flight Evaluation
+
+### 07 Python controller flight performance
+The Python controller successfully follows the provided test trajectory, meeting the minimum flight performance metrics. See the log file (`TLog.txt`) in the `Logs` folder. The control gains were discovered manually through trial and error.
+
+For this, the drone passes the provided evaluation script with the default parameters. These metrics being: 
+
+1. the drone flies the test trajectory faster than 20 seconds
+2. the maximum horizontal error is less than 2 meters
+3. the maximum vertical error is less than 1 meter
+
+Figures 2-4 below are graphic results from a successful flight.
+
+![Test results](images/Figure2.png?raw=true)<br>
+Figure 2: Example results from the test script.
+
+![Test trajectory](images/Figure3.png?raw=true)<br>
+Figure 3: Overhead view of test trajectory (gray line), flight path (dashed blue), start (green), goal (red). The light gray area is a 2-meter lateral tolerance.
+
+![Test trajectory](images/Figure4.png?raw=true)<br>
+Figure 4: Horizontal and vertical error metrics from a successful flight
+
+The NonlinearController class can operate with the default controls_flyer.py script, or with the controls_flyer-TEST.py script. The test version improves performance by slowing the attitude and position controllers to 20 Hz. A comparison sequence of 20 successful runs of each script is plotted in Figure 5 and demonstrates vertical error reduction by 31.5% (blue) and horizontal error reduction by 2.3% (red). The test version also includes alternative trajectories useful for tuning the control gains. A hover stability test indicates the Unity simulator contains a GPS noise radius less than 0.25 meter.
+
+![Python test runs](images/Figure5.png?raw=true)<br>
+Figure 5: Error metrics from 40 successful flights, comparing the default script (dashed) with reduced rate script (solid). Lower values are better.
+
+## 
+### 08 C++ controller flight performance
+The C++ controller successfully follows the provided test trajectory and passes (numerically and visually) all scenarios.
+
+In each scenario, the drone looks stable and performs the required task. The controller is able to handle the non-linearities of scenario 4 (all three drones in the scenario perform their required tasks with the same control gains). The control gains were discovered manually through trial and error, finding workable ranges and setting to mid-points, except yaw gain which is intentionally set to a lower value for higher stability.
+
+![Passing all scenarios](images/Figure6.png?raw=true)<br>
+Figure 6: Metrics from successful scenarios (note all are `PASS`)
+
+![Scenario 1](images/Figure7.png?raw=true)<br>
+Figure 7: Scenario 1 - tuning mass to hover for at least 0.8 seconds
+
+![Scenario 2](images/Figure8.png?raw=true)<br>
+Figure 8: Scenario 2 - stabilize the rotational motion and bring the vehicle back to level attitude
+
+![Scenario 3](images/Figure9.png?raw=true)<br>
+Figure 9: Scenario 3 - move to a destination (yellow yaws in flight)
+
+![Scenario 4](images/Figure10.png?raw=true)<br>
+Figure 10: Scenario 4 - nonidealities and robustness (red: overweight, orange: ideal, green: shifted mass)
+
+![Scenario 5](images/Figure11.png?raw=true)<br>
+Figure 11: Scenario 5 - trajectory following (red: no feed-forward, orange: with feed-forward)
+
+An additional scenario tests hover stability. In this case, position following error is less than 1.2 millimeters for at least 3.33 seconds.
+
+## 
+### 09 References
+
+[1] ***Quad Rotorcraft Control***<br>
+Carrillo, Lopez, Lozano, and Pegard<br>
+https://www.springer.com/us/book/9781447143987
+
+[2] ***The GRASP Multiple Micro UAV Testbed***<br>
+Michael, Mellinger, Lindsey, and Kumar<br>
+https://pdfs.semanticscholar.org/20b0/f0268bc11c55389816223d712d85203e2936.pdf
+
+[3] ***Feedback Systems, 2nd Ed.***<br>
+Karl J. Åström and Richard M. Murray<br>
+http://www.cds.caltech.edu/~murray/amwiki/index.php
+
+[4] ***Feed-Forward Parameter Identification for Precise Periodic Quadrocopter Motions***<br>
+Schoellig, Wiltsche, and D’Andrea<br>
+http://www.dynsyslab.org/wp-content/papercite-data/pdf/schoellig-acc12.pdf
+
+[5] ***On-board Model Predictive Control of a Quadrotor Helicopter***<br>
+Patrick Bouffard<br>
+https://www2.eecs.berkeley.edu/Pubs/TechRpts/2012/EECS-2012-241.pdf
+
+[6] ***Quadcopter Dynamics and Simulation***<br>
+Andrew Gibiansky<br>
+http://andrew.gibiansky.com/blog/physics/quadcopter-dynamics
+
+[7] ***Propeller Thrust and Drag in Forward Flight***<br>
+Rajan Gill and Raffaello D’Andrea<br>
+http://flyingmachinearena.org/wp-content/publications/2017/gilIEEE17.pdf
+
+[8] ***Thrust Mixing, Saturation, and Body-Rate Control***<br>
+Faessler, Falanga, and Scaramuzza<br>
+http://rpg.ifi.uzh.ch/docs/RAL17_Faessler.pdf
+
+[9] ***Modelling and Control of the Crazyflie Quadrotor***<br>
+Marcus Greiff<br>
+http://lup.lub.lu.se/student-papers/record/8905295/file/8905299.pdf
+
+[10] ***Control of VTOL Vehicles with Thrust-direction Tilting***<br>
+Hua, Hamel, and Samson<br>
+https://arxiv.org/pdf/1308.0191.pdf
+
+[11] ***A platform for aerial robotics research and demonstration: The Flying Machine Arena***<br>
+Lupashin, Hehn, Mueller, Schoellig, Sherback, and D’Andrea<br>
+http://flyingmachinearena.org/wp-content/publications/2014/lupashin2014platform.pdf
+
+[12] ***Matrix Equations Solver***<br>
+https://www.symbolab.com/solver/matrix-equations-calculator
+
+## Appendix
+
+### Rotation matrix
+
+![Rotation matrix](images/rotMatrix.png?raw=true)<br><br>
+
+## 
+### Angular velocity
+
+![Angular velocity](images/angularVelocity.png?raw=true)
+
+## 
+### Thrust computation
+
+![Thrust compute](images/thrusts.png?raw=true)
+
+![C++ trajectory](images/Figure12.png?raw=true)<br>
+Figure 12: Body coordinates and forces
