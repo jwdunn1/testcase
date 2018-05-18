@@ -30,8 +30,11 @@ The following report consists of 3 sections:
     01.5 GPS update
 
 **02 Flight evaluation**<br>
-    02.1 Performance criteria<br>
-    02.2 Detuned controller
+    02.1 Sensor noise<br>
+    02.2 Attitude estimation<br>
+    02.3 Prediction<br>
+    02.4 Magnetometer update<br>
+    02.5 GPS update
 
 **03 References**<br>
     Books, research papers, and tools
@@ -87,10 +90,9 @@ Unless otherwise noted, results are from tests made with the supplied controller
 
 **RESULTS:**
 
-    Simulation #22 (../config/06_SensorNoise.txt)
+    Simulation #2 (../config/06_SensorNoise.txt)
     PASS: ABS(Quad.GPS.X-Quad.Pos.X) was less than MeasuredStdDev_GPSPosXY for 72% of the time
     PASS: ABS(Quad.IMU.AX-0.000000) was less than MeasuredStdDev_AccelXY for 67% of the time
-
 
 ![Scenario 6](images/Figure1.png?raw=true)<br>
 Figure 1: Scenario 6 - measuring standard deviation
@@ -100,9 +102,9 @@ Figure 1: Scenario 6 - measuring standard deviation
 ### 02.2 Attitude estimation
 
 **RESULTS:**
-<pre>Simulation #18 (../config/07_AttitudeEstimation.txt)
-PASS: ABS(Quad.Est.E.MaxEuler) was less than 0.100000 for at least 3.000000 seconds
-</pre>
+
+    Simulation #5 (../config/07_AttitudeEstimation.txt)
+    PASS: ABS(Quad.Est.E.MaxEuler) was less than 0.100000 for at least 3.000000 seconds
 
 ![Scenario 6](images/Figure2.png?raw=true)<br>
 Figure 2: Scenario 7 - reducing estimated attitude error
@@ -144,10 +146,11 @@ Figure 7: Scenario 9 - after tuning in Z dimension
 
 Maintain an error of less than 0.1 radians in heading for at least 10 seconds.
 
-**RESULTS:**<br>
-Simulation #2 (../config/10_MagUpdate.txt)<br>
-PASS: ABS(Quad.Est.E.Yaw) was less than 0.100000 for at least 10.000000 seconds<br>
-PASS: ABS(Quad.Est.E.Yaw-0.000000) was less than Quad.Est.S.Yaw for 73% of the time
+**RESULTS:**
+
+    Simulation #3 (../config/10_MagUpdate.txt)
+    PASS: ABS(Quad.Est.E.Yaw) was less than 0.100000 for at least 10.000000 seconds
+    PASS: ABS(Quad.Est.E.Yaw-0.000000) was less than Quad.Est.S.Yaw for 73% of the time
 
 ![Scenario 10](images/Figure8.png?raw=true)<br>
 Figure 8: Scenario 10 - magnetometer update
@@ -158,9 +161,10 @@ Figure 8: Scenario 10 - magnetometer update
 
 Tuned the GPSPosXYStd and GPSPosZStd values in QuadEstimatorEKF.txt
 
-**RESULTS:**<br>
-Simulation #6 (../config/11_GPSUpdate.txt)<br>
-PASS: ABS(Quad.Est.E.Pos) was less than 1.000000 for at least 20.000000 seconds
+**RESULTS:**
+
+    Simulation #6 (../config/11_GPSUpdate.txt)
+    PASS: ABS(Quad.Est.E.Pos) was less than 1.000000 for at least 20.000000 seconds
 
 ![Scenario 11](images/Figure9.png?raw=true)<br>
 Figure 9: Scenario 11 - GPS update
@@ -171,9 +175,10 @@ Figure 9: Scenario 11 - GPS update
 
 Initial testing using the prior project controller (before tuning) was metrically successful (estimated position error of < 1m), however the aggressive tuning causes the path to overshoot the corners of the box trajectory.
 
-**RESULTS:**<br>
-Simulation #2 (../config/11_GPSUpdate.txt)<br>
-PASS: ABS(Quad.Est.E.Pos) was less than 1.000000 for at least 20.000000 seconds
+**RESULTS:**
+
+    Simulation #4 (../config/11_GPSUpdate.txt)
+    PASS: ABS(Quad.Est.E.Pos) was less than 1.000000 for at least 20.000000 seconds
 
 ![Scenario 11](images/Figure10.png?raw=true)<br>
 Figure 10: Scenario 11 - GPS update pretuning
