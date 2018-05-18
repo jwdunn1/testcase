@@ -1,247 +1,243 @@
-# FCND - Controls Project
+# FCND - Estimation Project
 
-![C++ trajectory](images/cover.png?raw=true)
+![C++ trajectory](images/Cover.png?raw=true)
 
 ## Overview
 
-The goal of the project is to first implement a prototype controller in Python and then translate that code into C++ with some modifications that will improve its robustness and performance. 
+The goal of the project is to develop an estimator to be used by the controller from the previous project to successfully fly a desired flight path using realistic sensors.
 <br><br><br>
 
 ## Associated files
 
-Program, script, configuration, and log:<br>
-**Python script:** `controller.py`<br>
-**Log file:** `Logs/TLog.txt`<br><br>
-Located in: https://github.com/jwdunn1/FCND-Controls-CPP:<br>
-**C++ program:** `QuadController.cpp`<br>
-**Configuration:** `QuadControlParams.txt`
+Program and configuration:<br>
+**C++ program:** `src/QuadEstimatorEKF.cpp`<br>
+**C++ program:** `src/QuadControl.cpp`<br>
+**C++ header:** `src/QuadControl.h`<br>
+**Configuration:** `config/QuadEstimatorEKF.txt`<br>
+**Configuration:** `config/QuadControlParams.txt`
 <br><br><br>
+
 
 ## Contents
 
-The following report consists of 4 sections:
+The following report consists of 3 sections:
 
 **01 Implementation**<br>
-    01.1 Body rate control<br>
-    01.2 Altitude control<br>
-    01.3 Roll-pitch control<br>
-    01.4 Yaw control<br>
-    01.5 Lateral position control<br>
-    01.6 Motor commands in C++
+    01.1 Sensor noise<br>
+    01.2 Attitude estimation<br>
+    01.3 Prediction<br>
+    01.4 Magnetometer update<br>
+    01.5 GPS update
 
 **02 Flight evaluation**<br>
-    02.1 Python controller performance<br>
-    02.2 C++ controller performance
+    02.1 Performance criteria<br>
+    02.2 Detuned controller
 
 **03 References**<br>
     Books, research papers, and tools
-
-**04 Appendix**<br>
-    04.1 Rotation matrix<br>
-    04.2 Angular velocity<br>
-    04.3 Thrust computation
 <br><br><br>
 
 ## 01 Implementation
 
-Each of the implemented methods of the architecture fit together as illustrated in Figure 1. Beginning with the code from the `Full 3D Control` exercise presented in class, the methods were refactored several times to gain a full understanding of the mathematics, physics, and data flow.
+### 01.1 Sensor noise
 
-![Architecture](images/Figure1.png?raw=true)<br>
-Figure 1: Control structure
+Produced 9.27 seconds of data. Read into Excel. Use STDEV() function to calculate standard deviation of measurements. For GPS, the value is 0.723312 and for IMU, 0.490335. With some adjustments and a capture of 32.57s of data, then GPS: 0.6782  IMU: 0.4955. These are close to the simulated settings of 0.7 for GPU and 0.5 for IMU.
 
-## 
+[see lines 3-4 in `06_SensorNoise.txt`]
 
+### 01.2 Attitude estimation
 
+According to Quan, "nonlinear complementary filters are based on a nonlinear relationship between
+the angular velocity and the angle of rotation."
 
-### 01.1 Body rate control
+To reduce attitude estimation error, first the attitude estimate is converted to a quaternion, then integrated with the Quaternion class function `IntegrateBodyRate()`. Finally, it is converted back to Euler angles using the convenience functions `Roll()`, `Pitch()`, and `Yaw()`.
 
-The controller is a proportional controller on body rates to commanded moments. The controller takes into account the moments of inertia of the drone when calculating the commanded moments. For the Python version, this controller operates at a frequency of 40 hertz through the gyro callback. (The C++ version operates all controllers synchronously at 500 Hz.)
+[see lines 100-109 in `QuadEstimatorEKF.cpp`]
 
-Python: [see lines 105-112 in `controller.py`]<br>
-C++: [see lines 111-117 in `QuadController.cpp`]
+### 01.3 Prediction
 
-## 
-### 01.2 Altitude control
+Implemented integrate forward, calculate the partial derivative of the body-to-global rotation matrix, and predict the state covariance forward.
 
-Part one of attitude control, the altitude controller uses both the down position and the down velocity to command thrust. The drone's mass is accounted for to ensure that the output value is a thrust value in newtons. The thrust includes the non-linear effects from non-zero roll/pitch angles.
+[see lines 172-181 in `QuadEstimatorEKF.cpp`]<br>
+[see lines 209-219 in `QuadEstimatorEKF.cpp`]<br>
+[see lines 266-276 in `QuadEstimatorEKF.cpp`]<br>
 
-Note: The Python version of the attitude controller (which includes altitude, roll-pitch, and yaw controllers) operates at 40 Hz through the attitude callback.
+Note: in reference paper [2], there is an error in formula 52 on page 9. (I reported this as issue #320 in Waffle.) The code in QuadEstimatorEKF::GetRbgPrime is implemented with the correction (at line 215) to match Diebel[3] equation 71.
 
-Python: [see lines 135-144 in `controller.py`]
+### 01.4 Magnetometer update
 
-Additionally, the C++ altitude controller contains an integrator to handle the weight non-idealities presented in scenario 4.
+Implemented `UpdateFromMag` to include the magnetometer data into the state. The solution normalizes the difference between the measured and estimated yaw.
 
-C++: [see lines 149-159 in `QuadController.cpp`]
+[see lines 328-335 in `QuadEstimatorEKF.cpp`]<br>
 
-## 
-### 01.3 Roll pitch control
+### 01.5 GPS update
 
-Part two of attitude control, the roll-pitch controller uses the acceleration and thrust commands, in addition to the vehicle attitude to output a body rate command. The controller accounts for the non-linear transformation from local accelerations to body rates. The drone's mass is accounted for when calculating the target angles. See also the rotation matrix and angular velocity in the appendix below. Lateral acceleration is limited by a maximum tilt angle.
+Implemented GPS update. `hprime` is assigned as an identity matrix as in Diebel[3] equation 55.
 
-Python: [see lines 158-170 in `controller.py`]<br>
-C++: [see lines 190-199 in `QuadController.cpp`]
-
-## 
-### 01.4 Yaw control
-
-Part three of attitude control, the yaw controller is a linear/proportional heading mechanism which outputs yaw rate commands. Further, the yaw error is checked for a valid range between -π and π.
-
-Python: [see lines 179-185 in `controller.py`]<br>
-C++: [see lines 222-228 in `QuadController.cpp`]
-
-## 
-### 01.5 Lateral position control
-
-Finally, the lateral position controller uses the local NE position and velocity to generate a commanded local acceleration. The Python version operates at 80 Hz through the velocity callback. The trajectory_control  routine optionally returns an acceleration feed-forward value to pass along to the lateral position controller (a testing script mentioned in section 07 below makes use of this feed forward value). Additionally, to smooth the sharp corners of the test trajectory and improve computation of the commanded acceleration, an integrator uses the time duration since the last call.
-
-Python: [see lines 208-219 in `controller.py`]<br>
-C++: [see lines 263-274 in `QuadController.cpp`]
-
-## 
-### 01.6 Motor commands in C++.
-
-The thrust and moments are converted to the appropriate four different desired thrust commands for the motors. The dimensions of the drone arm length (`L`) and motor torque coefficient (`kappa`) are accounted for when calculating thrust from desired rotation moments. See also the thrust computation in the appendix below.
-
-C++: [see lines 77-86 in `QuadController.cpp`]
+[see lines 302-305 in `QuadEstimatorEKF.cpp`]<br>
 <br><br><br>
-
 
 ## 02 Flight evaluation
 
-### 02.1 Python controller performance
-The Python controller successfully follows the provided test trajectory, meeting the minimum flight performance metrics. See the log file (`TLog.txt`) in the `Logs` folder. The control gains were discovered manually through trial and error.
+### 02.1 Sensor noise
 
-For this, the drone passes the provided evaluation script with the default parameters. These metrics being: 
+The calculated standard deviation correctly captures ~68% of the sensor measurements.
 
-1. the drone flies the test trajectory faster than 20 seconds
-2. the maximum horizontal error is less than 2 meters
-3. the maximum vertical error is less than 1 meter
+Unless otherwise noted, results are from tests made with the supplied controller (described as "relaxed to work with an estimated state").
 
-Figures 2-4 below are graphic results from a successful flight.
+**RESULTS:**
 
-![Test results](images/Figure2.png?raw=true)<br>
-Figure 2: Example results from the test script.
+    Simulation #22 (../config/06_SensorNoise.txt)
+    PASS: ABS(Quad.GPS.X-Quad.Pos.X) was less than MeasuredStdDev_GPSPosXY for 72% of the time
+    PASS: ABS(Quad.IMU.AX-0.000000) was less than MeasuredStdDev_AccelXY for 67% of the time
 
-## 
 
-![Test trajectory](images/Figure3.png?raw=true)<br>
-Figure 3: Overhead view of test trajectory (gray line), flight path (dashed blue), start (green), goal (red). The light gray area is a 2-meter lateral tolerance.
+![Scenario 6](images/Figure1.png?raw=true)<br>
+Figure 1: Scenario 6 - measuring standard deviation
 
 ## 
 
-![Test trajectory](images/Figure4.png?raw=true)<br>
-Figure 4: Horizontal and vertical error metrics from a successful flight
+### 02.2 Attitude estimation
 
-The NonlinearController class can operate with the default controls_flyer.py script, or with the controls_flyer-TEST.py script. The `TEST` version improves performance by slowing the attitude and position controllers to 20 Hz. A comparison sequence of 20 successful runs of each script is plotted in Figure 5 and demonstrates vertical error reduction by 31.5% (blue) and horizontal error reduction by 2.3% (red). The `TEST` version also includes alternative trajectories useful for tuning the control gains. A hover stability test indicates the Unity simulator contains a GPS noise radius less than 0.25 meter.
+**RESULTS:**
+<pre>Simulation #18 (../config/07_AttitudeEstimation.txt)
+PASS: ABS(Quad.Est.E.MaxEuler) was less than 0.100000 for at least 3.000000 seconds
+</pre>
 
-![Python test runs](images/Figure5.png?raw=true)<br>
-Figure 5: Error metrics from 40 successful flights, comparing the default script (dashed) with reduced rate script (solid). Vertical error is blue and horizontal error is red. Lower values are better.
-
-## 
-### 02.2 C++ controller performance
-The C++ controller successfully follows the provided test trajectory and passes (numerically and visually) all scenarios. See Figures 6-11 below.
-
-In each scenario, the drone looks stable and performs the required task. The controller is able to handle the non-linearities of scenario 4 (all three drones in the scenario perform their required tasks with the same control gains). The control gains were discovered manually through trial and error, finding workable ranges and setting to mid-points, except yaw gain which is intentionally set to a lower value for higher stability.
-
-![Passing all scenarios](images/Figure6.png?raw=true)<br>
-Figure 6: Metrics from successful scenarios (note all are `PASS`)
+![Scenario 6](images/Figure2.png?raw=true)<br>
+Figure 2: Scenario 7 - reducing estimated attitude error
 
 ## 
 
-![Scenario 1](images/Figure7.png?raw=true)<br>
-Figure 7: Scenario 1 - tuning mass to hover for at least 0.8 seconds
+### 02.3 Prediction
+
+Estimator integrates forward to track the actual state.
+
+![Scenario 8](images/Figure3.png?raw=true)<br>
+Figure 3: Scenario 8 - prediction with reasonably slow drift
 
 ## 
 
-![Scenario 2](images/Figure8.png?raw=true)<br>
-Figure 8: Scenario 2 - stabilize the rotational motion and bring the vehicle back to level attitude
+![Scenario 9](images/Figure4.png?raw=true)<br>
+Figure 4: Scenario 9 - before tuning
 
 ## 
 
-![Scenario 3](images/Figure9.png?raw=true)<br>
-Figure 9: Scenario 3 - move to a destination (yellow yaws in flight)
+Tuning the InitStdDevs and the process noise model brings the errors in range.
+
+![Scenario 9](images/Figure5.png?raw=true)<br>
+Figure 5: Scenario 9 - after tuning in X dimension
 
 ## 
 
-![Scenario 4](images/Figure10.png?raw=true)<br>
-Figure 10: Scenario 4 - nonidealities and robustness (red: overweight, orange: ideal, green: shifted mass)
+![Scenario 9](images/Figure6.png?raw=true)<br>
+Figure 6: Scenario 9 - after tuning in Y dimension
 
 ## 
 
-![Scenario 5](images/Figure11.png?raw=true)<br>
-Figure 11: Scenario 5 - trajectory following (red: no feed-forward, orange: with feed-forward)
+![Scenario 9](images/Figure7.png?raw=true)<br>
+Figure 7: Scenario 9 - after tuning in Z dimension
 
-An additional scenario tests hover stability. In this case, position following error is less than 1.2 millimeters for at least 3.33 seconds.
+## 
+
+### 02.4 Magnetometer update
+
+Maintain an error of less than 0.1 radians in heading for at least 10 seconds.
+
+**RESULTS:**<br>
+Simulation #2 (../config/10_MagUpdate.txt)<br>
+PASS: ABS(Quad.Est.E.Yaw) was less than 0.100000 for at least 10.000000 seconds<br>
+PASS: ABS(Quad.Est.E.Yaw-0.000000) was less than Quad.Est.S.Yaw for 73% of the time
+
+![Scenario 10](images/Figure8.png?raw=true)<br>
+Figure 8: Scenario 10 - magnetometer update
+
+## 
+
+### 02.5 GPS update
+
+Tuned the GPSPosXYStd and GPSPosZStd values in QuadEstimatorEKF.txt
+
+**RESULTS:**<br>
+Simulation #6 (../config/11_GPSUpdate.txt)<br>
+PASS: ABS(Quad.Est.E.Pos) was less than 1.000000 for at least 20.000000 seconds
+
+![Scenario 11](images/Figure9.png?raw=true)<br>
+Figure 9: Scenario 11 - GPS update
+
+## 
+
+**NOTE:** Results below are from tests made with the controller from the prior project. (Located in: https://github.com/jwdunn1/FCND-Controls-CPP)<br>
+
+Initial testing using the prior project controller (before tuning) was metrically successful (estimated position error of < 1m), however the aggressive tuning causes the path to overshoot the corners of the box trajectory.
+
+**RESULTS:**<br>
+Simulation #2 (../config/11_GPSUpdate.txt)<br>
+PASS: ABS(Quad.Est.E.Pos) was less than 1.000000 for at least 20.000000 seconds
+
+![Scenario 11](images/Figure10.png?raw=true)<br>
+Figure 10: Scenario 11 - GPS update pretuning
+
+![Scenario 11](images/Figure11.png?raw=true)<br>
+Figure 11: Scenario 11 - GPS update pretuning (overhead)
+
+To mitigate the overshoots, the position and velocity gains were reduced from the more aggressive initial settings until a box shape is achieved.
+
+![Scenario 11](images/Figure12.png?raw=true)<br>
+Figure 12: Scenario 11 - GPS update tuned
+
+![Scenario 11](images/Figure13.png?raw=true)<br>
+Figure 13: Scenario 11 - GPS update tuned (overhead)
+
+## 
+
+**NOTE:** The original (more aggressive) controller gains are required for scenarios 3, 4, and 5. Successful passing of these scenarios is not required for this project.
+
 <br><br><br>
 
 ## 03 References
 
-[1] ***Quad Rotorcraft Control***<br>
-Carrillo, Lopez, Lozano, and Pegard<br>
-https://www.springer.com/us/book/9781447143987
+[1] ***Introduction to Multicopter Design and Control***<br>
+Quan Quan<br>
+Springer Singapore, 2017
 
-[2] ***The GRASP Multiple Micro UAV Testbed***<br>
-Michael, Mellinger, Lindsey, and Kumar<br>
-https://pdfs.semanticscholar.org/20b0/f0268bc11c55389816223d712d85203e2936.pdf
+[2] ***Estimation for Quadrotots***<br>
+Tellex, Brown, and Lupashin<br>
+https://www.overleaf.com/read/vymfngphcccj
 
-[3] ***Feedback Systems, 2nd Ed***<br>
-Karl J. Åström and Richard M. Murray<br>
-http://www.cds.caltech.edu/~murray/amwiki/index.php
+[3] ***Representing Attitude: Euler Angles, Unit Quaternions, and Rotation Vectors***<br>
+James Diebel<br>
+https://www.astro.rug.nl/software/kapteyn-beta/_downloads/attitude.pdf
 
-[4] ***Feed-Forward Parameter Identification for Precise Periodic Quadrocopter Motions***<br>
-Schoellig, Wiltsche, and D’Andrea<br>
-http://www.dynsyslab.org/wp-content/papercite-data/pdf/schoellig-acc12.pdf
+[4] ***Kalman Tutorial***<br>
+Simon Levy<br>
+https://home.wlu.edu/~levys/kalman_tutorial/
 
-[5] ***On-board Model Predictive Control of a Quadrotor Helicopter***<br>
-Patrick Bouffard<br>
-https://www2.eecs.berkeley.edu/Pubs/TechRpts/2012/EECS-2012-241.pdf
+[5] ***Kalman Filters on Youtube***<br>
+Michel van Biezen<br>
+https://www.youtube.com/playlist?list=PLX2gX-ftPVXU3oUFNATxGXY90AULiqnWT
 
-[6] ***Quadcopter Dynamics and Simulation***<br>
+[6] ***A New Extension of the Kalman Filter to Nonlinear
+Systems***<br>
+Julier and Uhlmann<br>
+https://people.eecs.berkeley.edu/~pabbeel/cs287-fa15/optreadings/JulierUhlmann-UKF.pdf
+
+[7] ***The Unscented Kalman Filter for Nonlinear Estimation***<br>
+Wan and van der Merwe<br>
+https://www.seas.harvard.edu/courses/cs281/papers/unscented.pdf
+
+[8] ***A New Method for the Nonlinear Transformation of Means and Covariances in Filters and Estimators***<br>
+Julier, Uhlmann, and Durrant-Whyte<br>
+https://pdfs.semanticscholar.org/76c5/2206888eedef8d8dead3007992e53e3c4ae8.pdf
+
+[9] ***Python Kalman filter***<br>
+Daniel Duckworth<br>
+https://pykalman.github.io/
+
+[10] ***Quadcopter Dynamics, Simulation, and Control***<br>
 Andrew Gibiansky<br>
-http://andrew.gibiansky.com/blog/physics/quadcopter-dynamics
+http://andrew.gibiansky.com/downloads/pdf/Quadcopter%20Dynamics,%20Simulation,%20and%20Control.pdf
 
-[7] ***Propeller Thrust and Drag in Forward Flight***<br>
-Rajan Gill and Raffaello D’Andrea<br>
-http://flyingmachinearena.org/wp-content/publications/2017/gilIEEE17.pdf
-
-[8] ***Thrust Mixing, Saturation, and Body-Rate Control***<br>
-Faessler, Falanga, and Scaramuzza<br>
-http://rpg.ifi.uzh.ch/docs/RAL17_Faessler.pdf
-
-[9] ***Modelling and Control of the Crazyflie Quadrotor***<br>
-Marcus Greiff<br>
-http://lup.lub.lu.se/student-papers/record/8905295/file/8905299.pdf
-
-[10] ***Control of VTOL Vehicles with Thrust-direction Tilting***<br>
-Hua, Hamel, and Samson<br>
-https://arxiv.org/pdf/1308.0191.pdf
-
-[11] ***A platform for aerial robotics research and demonstration: The Flying Machine Arena***<br>
-Lupashin, Hehn, Mueller, Schoellig, Sherback, and D’Andrea<br>
-http://flyingmachinearena.org/wp-content/publications/2014/lupashin2014platform.pdf
-
-[12] ***Matrix Equations Solver***<br>
-https://www.symbolab.com/solver/matrix-equations-calculator
-<br><br><br>
-
-## 04 Appendix
-
-### 04.1 Rotation matrix
-
-![Rotation matrix](images/rotMatrix.png?raw=true)<br><br>
-
-## 
-### 04.2 Angular velocity
-
-![Angular velocity](images/angularVelocity.png?raw=true)
-
-## 
-### 04.3 Thrust computation
-
-![Thrust compute](images/thrusts.png?raw=true)
-
-![C++ trajectory](images/Figure12.png?raw=true)<br>
-Figure 12: Body coordinates and forces
-<br><br><br>
-
-    End of report
+[11] ***Computing Euler angles from a rotation matrix***<br>
+Gregory Slabaugh<br>
+http://citeseerx.ist.psu.edu/viewdoc/download?doi=10.1.1.371.6578&rep=rep1&type=pdf
