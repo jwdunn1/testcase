@@ -186,6 +186,8 @@ Figure 10: Scenario 11 - GPS update pretuning
 ![Scenario 11](images/Figure11.png?raw=true)<br>
 Figure 11: Scenario 11 - GPS update pretuning (overhead)
 
+## 
+
 To mitigate the overshoots, the position and velocity gains were reduced from the more aggressive initial settings until a box shape is achieved.
 
 ![Scenario 11](images/Figure12.png?raw=true)<br>
