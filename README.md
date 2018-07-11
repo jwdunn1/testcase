@@ -1,7 +1,5 @@
 # FCND - Estimation Project
 
-![C++ trajectory](images/Cover.png?raw=true)
-
 ## Overview
 
 The goal of the project is to develop an estimator to be used by the controller from the previous project to successfully fly a desired flight path using realistic sensors.
